@@ -1,0 +1,412 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Stellar Admin Help Center</title>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body {
+        background-image: url(http://stellar.aero/img/heroes/Stellar_Home_Hero_Night_2400.jpg);
+        color: #fff;
+        font-size: 14px;
+        font-family: "Avenir Next";
+        /*background: rgb(59, 56, 74);*/
+      }
+
+      form input { border: 0; padding: 10px; width: 90%; margin-right: .5%; }
+      /*form button { width: 9%; background: rgb(130, 224, 255); border: none; padding: 10px; }*/
+      #messages { list-style-type: none; margin: 0; padding: 0; }
+      #messages li { padding: 5px 10px; }
+      #messages li:nth-child(odd) { background: #eee; }
+
+      h2 {
+        font-size: 20px;
+        font-weight: 600;
+      }
+
+      .chat-wrapper {
+        width: 960px;
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        margin: 50px auto;
+        overflow: auto;
+        border-radius: 3px;
+        background: rgba(255, 255, 255, 0.1);
+      }
+
+      li {
+        list-style-type: none;
+        margin: 0;
+        padding: 0;
+      }
+
+      .users-wrapper {
+        float: left;
+        width: 300px;
+      }
+
+      #users {
+        position: relative;
+      }
+
+      .connection-status {
+        position: absolute;
+        width: 10px;
+        height: 10px;
+        top: 15px;
+        left: 10px;
+        border-radius: 5px;
+        border: 2px solid #fff;
+      }
+
+      .connection-status {
+        background-color: #eee;
+      }
+
+      #users li {
+        position: relative;
+      }
+
+      #users li.connected .connection-status {
+        background-color: #339900;
+      }
+
+      a.user {
+        display: block;
+        padding: 10px 10px 10px 10px;
+        text-decoration: none;
+        color: #fff;
+      }
+
+      a.user[data-connected="false"] {
+        font-style: italic;
+        color: #ccc;
+      }
+
+      a.selected {
+        background: #c49f66;
+      }
+
+      a.user:hover {
+        background: rgba(196, 159, 102, 0.8);
+      }
+
+      a.selected {
+        color: #339900;
+      }
+
+      .users-heading {
+        text-align: center;
+        padding: 20px 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.5);
+      }
+
+      .messages-wrapper {
+        box-sizing: border-box;
+        float: left;
+        width: 658px;
+        border-left: 1px solid rgba(255, 255, 255, 0.5);
+        overflow: hidden;
+        position: relative;
+      }
+
+      .placeholder-wrapper {
+        position: absolute;
+        width: 658px;
+        text-align: center;
+      }
+
+      .placeholder-wrapper p {
+        line-height: 450px;
+        font-size: 18px;
+      }
+
+      .messages {
+        height: 460px;
+        padding-top: 10px;
+        overflow: auto;
+      }
+
+      .input-wrapper {
+        height: 50px;
+        border-top: 1px solid rgba(255, 255, 255, 0.5);
+        position: relative;
+      }
+
+      .input-wrapper .typing-indicator-wrapper {
+        position: absolute;
+        top: -20px;
+        font-style: italic;
+        font-size: 12px;
+        color: #999;
+        padding: 0 10px;
+      }
+
+      .typing-indicator {
+        line-height: 20px;
+      }
+
+      .inactive {
+        display: none;
+      }
+
+      .message-box {
+        width: 100%;
+        height: 100%;
+        font-size: 14px;
+        border: 0;
+        padding: 5px 170px 5px 15px;
+        display: inline-block;
+        border-right: 1px solid rgba(255, 255, 255, 0.5);
+        background: rgba(0, 0, 0, 0);
+        color: #fff;
+      }
+
+      .message {
+        padding: 5px 15px;
+      }
+
+      .message.admin strong {
+        color: #c49f66;
+      }
+
+      .send-message {
+        padding: 10px;
+        border: 0;
+        /*border-radius: 5px;*/
+        width: 150px;
+        height: 50px;
+        font-size: 16px;
+        color: #fff;
+        background: #c49f66;
+      }
+
+      .user-profile-photo {
+        display: inline-block;
+        width: 50px;
+        border-radius: 25px;
+        border: 2px solid #eee;
+      }
+
+      .user-details-wrapper {
+        vertical-align: top;
+        display: inline-block;
+        padding-left: 5px;
+      }
+
+      .user-details-wrapper p {
+        padding: 3px;
+      }
+
+      .user-details-wrapper p.user-badge {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background-color: #f00;
+        min-width: 25px;
+        /*height: 20px;*/
+        line-height: 20px;
+        font-size: 12px;
+        text-align: center;
+        border-radius: 20px;
+        font-style: normal;
+      }
+
+      .message-img {
+        max-width: 300px;
+      }
+
+      .message-text {
+        color: #aaa;
+      }
+
+      .button-container {
+        position: absolute;
+        width: 150px;
+        height: 100%;
+        top: 0;
+        right: 0;
+      }
+
+      strong {
+        font-weight: 500;
+      }
+    </style>
+
+    <script src="/socket.io/socket.io.js"></script>
+
+    <script src="http://code.jquery.com/jquery-1.11.1.js"></script>
+    <script>
+      var ChatManager = {
+        activeChatEmail: ''
+      };
+
+      var socket = io();
+
+      socket.emit('connectAdmin');
+
+      socket.on('connectClient', function(email) {
+        console.log(email);
+      });
+
+      // socket.on('clientDisconnected', function(email) {
+      //   $('.user[data-email="' + email + '"]').remove();
+      // });
+
+      socket.on('updateUsers', function(clientsHash) {
+        $('#users').empty();
+        var socketId, connected, firstName, lastName, photoUrl, $user;
+        for (var email in clientsHash) {
+          socketId = clientsHash[email].socketId;
+          connected = clientsHash[email].connected;
+          photoUrl = clientsHash[email].photoUrl;
+          firstName = clientsHash[email].firstName;
+          lastName = clientsHash[email].lastName;
+
+          var $user = $('<a href="#"/>').addClass('user')
+          .attr('data-socket-id', socketId)
+          .attr('data-email', email)
+          .attr('data-connected', connected)
+          .attr('data-first-name', firstName)
+          .attr('data-last-name', lastName)
+          .attr('data-photo-url', photoUrl);
+
+          $user.toggleClass('selected', email == ChatManager.activeChatEmail);
+
+          var $content = $('<div/>').addClass('user-content');
+          var $img = $('<img/>').attr('src', photoUrl).addClass('user-profile-photo');
+          var $details = $('<div/>').addClass('user-details-wrapper');
+          var $detailsName = $('<p/>').addClass('user-details-name').text(firstName + ' ' + lastName);
+          var $detailsEmail = $('<p/>').addClass('user-details-email').text(email);
+          var $badge = $('<p/>').addClass('user-badge').addClass('inactive').text('0');
+
+          $detailsName.appendTo($details);
+          $detailsEmail.appendTo($details);
+          $badge.appendTo($details);
+          $img.appendTo($content);
+          $details.appendTo($content);
+          $content.appendTo($user);
+
+          var $status = $('<span/>').addClass('connection-status');
+
+          var $li = $('<li/>').toggleClass('connected', connected);
+
+          $status.appendTo($li);
+          $user.appendTo($li);
+          $li.appendTo('#users');
+        }
+      });
+
+      socket.on('chatLogs', function(email, chatLogs) {
+        var $badge = $('.user[data-email="' + email + '"]').find('.user-badge');
+        if ($('.user.selected').attr('data-email') === email) {
+          $('.messages').empty();
+          $badge.addClass('inactive');
+          $badge.data('badge-count', 0).text(0);
+
+          // update chat logs
+          chatLogs.forEach(function(message) {
+            var user = message.email,
+                body = message.body,
+                msgType = message.msgType || 'text',
+                isAdmin = user.indexOf('@') === -1;
+
+            if (msgType === 'text') {
+              $('<p/>').addClass('message').toggleClass('admin', isAdmin).html("<strong>"+user+"</strong>: <span class=\"message-text\">" + body + "</span>").appendTo('.messages');
+            } else {
+              var img = new Image();
+              var src = 'data:image/jpeg;base64,' + body;
+              $('<p/>').addClass('message').toggleClass('admin', isAdmin).html('<strong>' + user + '</strong>: <img class="message-img" src="'+src+'"/>').appendTo('.messages');
+            }
+          });
+
+          $('.messages').animate({
+            scrollTop: $('.messages').prop('scrollHeight')
+          }, 200);
+        } else {
+          var newBadgeCount = parseInt($badge.data('badge-count') || 0) + 1;
+          $badge.data('badge-count', newBadgeCount).text(newBadgeCount);
+          $badge.removeClass('inactive');
+        }
+      });
+
+      socket.on('clientTyping', function(email, isTyping) {
+        if ($('.user.selected').attr('data-email') === email) {
+          $('.typing-indicator').toggleClass('inactive', !isTyping);
+        } else {
+          $('.typing-indicator').addClass('inactive');
+        }
+      });
+    </script>
+
+    <script type="text/javascript">
+
+      $().ready(function() {
+        $('#users').on('click', function(e) {
+          var $target = $(e.target).closest('.user'),
+          email;
+          if ($target.hasClass('user')) {
+            email = $target.data('email');
+            ChatManager.activeChatEmail = email;
+
+            $('.user').removeClass('selected');
+            $target.addClass('selected');
+            socket.emit('adminGetChat', email);
+
+            $('.input-wrapper.inactive').removeClass('inactive');
+            $('.placeholder-wrapper').addClass('inactive');
+          }
+          e.preventDefault();
+        });
+
+        $('button').on('click', function(e) {
+          sendMessage();
+        });
+
+        $('.message-box').on('input', function(e) {
+          var text = $(e.target).val(),
+            selectedEmail = $('.user.selected').data('email');
+          if (text === '') {
+            socket.emit('adminTypingStopped', selectedEmail);
+          } else {
+            socket.emit('adminTypingStarted', selectedEmail);
+          }
+        });
+
+        $('.message-box').keypress(function(e) {
+          if(e.which == 13) {
+            sendMessage();
+          }
+        });
+
+        function sendMessage() {
+          var $input = $('.message-box'),
+            message = $input.val(),
+            selectedEmail = $('.user.selected').data('email');
+          socket.emit('adminSendMessage', selectedEmail, message);
+          $input.val('');
+        }
+      });
+    </script>
+  </head>
+  <body>
+    <div class="chat-wrapper">
+      <div class="users-wrapper">
+        <h2 class="users-heading">Clients</h2>
+        <ul id="users">
+        </ul>
+      </div>
+      <div class="messages-wrapper">
+        <div class="placeholder-wrapper">
+          <p>Select a client to view or begin a conversation</p>
+        </div>
+        <div class="messages"></div>
+        <div class="input-wrapper inactive">
+          <div class="typing-indicator-wrapper"><p class="typing-indicator inactive">Client is typing...</p></div>
+          <input type="text" class="message-box" placeholder="Send a message"/>
+          <div class="button-container">
+            <button class="send-message">Send</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
